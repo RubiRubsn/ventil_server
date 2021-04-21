@@ -1,4 +1,7 @@
 #include <Arduino.h>
+#include <ESPUI.h>
+#include <DNSServer.h>
+#include "ui_server.h"
 #include <ESP8266WiFi.h>
 #include <ESPAsyncTCP.h>
 #include <ESPAsyncWebServer.h>
@@ -7,15 +10,17 @@
 #include <string.h>
 #include <Updater.h>
 
-AsyncWebServer server(80);
+const byte DNS_PORT = 53;
+IPAddress apIP(192, 168, 1, 1);
+DNSServer dnsServer;
 
 const int anz_relays = 4;
 const bool pumpe = true;
 bool fuellstand_sensor = true;
 const int pumpe_pin = D5;
 const uint8_t Relay[anz_relays] = {D0, D1, D2, D4};
-const char *SSID = "SSID";
-const char *PSW = "Password";
+const char *SSID = "Pretty Fly For A Wifi";
+const char *PSW = "WGlan121019";
 const char *version = "1.3";
 //hier die nr. des Ventil servers eintragen um eine einfachere handhabung bei der ip eingabe zu haben
 
@@ -25,6 +30,8 @@ bool relay[anz_relays] = {false};
 uint32_t relay_anzeit[anz_relays] = {0};
 
 bool restart = false;
+
+server_ui server_ui;
 
 void handle_version(String &message)
 {
@@ -250,11 +257,13 @@ void handle_relays()
 
 void setup()
 {
+
+  Serial.begin(115200);
   if (!pumpe)
   {
     fuellstand_sensor = false;
   }
-  Serial.begin(115200);
+
   WiFi.mode(WIFI_STA);
   WiFi.begin(SSID, PSW);
   Serial.print("Waiting to connect");
@@ -273,14 +282,16 @@ void setup()
 
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
+  dnsServer.start(DNS_PORT, "*", apIP);
+  server_ui.init_server();
 
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+  ESPUI.server->on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
     String message;
     handle_root(message);
     request->send(200, "text/plain", message);
   });
 
-  server.on("/set_relay", HTTP_GET, [](AsyncWebServerRequest *request) {
+  ESPUI.server->on("/set_relay", HTTP_GET, [](AsyncWebServerRequest *request) {
     String message;
     AsyncWebParameter *relay_nummer = request->getParam(0);
     AsyncWebParameter *secondary_p = request->getParam(1);
@@ -312,7 +323,7 @@ void setup()
     request->send(200, "text/plain", message);
   });
 
-  server.on("/abfrage_relay", HTTP_GET, [](AsyncWebServerRequest *request) {
+  ESPUI.server->on("/abfrage_relay", HTTP_GET, [](AsyncWebServerRequest *request) {
     String message;
     if (request->hasParam("relay_nr"))
     {
@@ -326,17 +337,17 @@ void setup()
     request->send(200, "text/plain", message);
   });
 
-  server.on("/version", HTTP_GET, [](AsyncWebServerRequest *request) {
+  ESPUI.server->on("/version", HTTP_GET, [](AsyncWebServerRequest *request) {
     String message;
     handle_version(message);
     request->send(200, "text/plain", message);
   });
-  server.on("/restart", HTTP_GET, [](AsyncWebServerRequest *request) {
+  ESPUI.server->on("/restart", HTTP_GET, [](AsyncWebServerRequest *request) {
     String message;
     handle_restart(message);
     request->send(200, "text/plain", message);
   });
-  server.on(
+  ESPUI.server->on(
       "/ota",
       HTTP_POST,
       [](AsyncWebServerRequest *request) {
@@ -344,14 +355,13 @@ void setup()
       },
       handleOTAUpload);
 
-  server.on("/ota",
-            HTTP_GET,
-            [](AsyncWebServerRequest *request) {
-              AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", OTA_INDEX);
-              request->send(response);
-            });
-  server.onNotFound(notFound);
-  server.begin();
+  ESPUI.server->on("/ota",
+                   HTTP_GET,
+                   [](AsyncWebServerRequest *request) {
+                     AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", OTA_INDEX);
+                     request->send(response);
+                   });
+  ESPUI.server->onNotFound(notFound);
   Serial.println("Server listening");
   for (int i = 0; i < anz_relays; i++)
   {
