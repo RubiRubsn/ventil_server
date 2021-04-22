@@ -15,18 +15,20 @@ IPAddress apIP(192, 168, 1, 1);
 DNSServer dnsServer;
 
 const int anz_relays = 4;
-const bool pumpe = true;
+bool pumpe = true;
 bool fuellstand_sensor = true;
 const int pumpe_pin = D5;
 const uint8_t Relay[anz_relays] = {D0, D1, D2, D4};
-const char *SSID = "Pretty Fly For A Wifi";
-const char *PSW = "WGlan121019";
+char *SSID = "";
+char *PSW = "";
 const char *version = "1.3";
 //hier die nr. des Ventil servers eintragen um eine einfachere handhabung bei der ip eingabe zu haben
 
 bool fuelle_zwischenspeicher = false;
+bool fuelle_zw_ui = false;
 const char *OTA_INDEX PROGMEM = R"=====(<!DOCTYPE html><html><head><meta charset=utf-8><title>OTA</title></head><body><div class="upload"><form method="POST" action="/ota" enctype="multipart/form-data"><input type="file" name="data" /><input type="submit" name="upload" value="Upload" title="Upload Files"></form></div></body></html>)=====";
 bool relay[anz_relays] = {false};
+bool relay_zwischenspeicher[anz_relays] = {false};
 uint32_t relay_anzeit[anz_relays] = {0};
 
 bool restart = false;
@@ -263,9 +265,11 @@ void setup()
   {
     fuellstand_sensor = false;
   }
-
+  server_ui.load();
+  pumpe = server_ui.dat.pumpe;
+  fuellstand_sensor = server_ui.dat.fuellstand_sensor;
   WiFi.mode(WIFI_STA);
-  WiFi.begin(SSID, PSW);
+  WiFi.begin(server_ui.dat.SSID, server_ui.dat.PSW);
   Serial.print("Waiting to connect");
   int timeout = 0;
   while (WiFi.status() != WL_CONNECTED)
@@ -275,7 +279,30 @@ void setup()
     timeout++;
     if (timeout >= 20)
     {
-      ESP.restart();
+      if (server_ui.dat.reset != 1)
+      {
+        Serial.print("\n\nCreating hotspot");
+
+        WiFi.mode(WIFI_AP);
+        WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
+        WiFi.softAP("feuchte_server");
+
+        int timeoutAP = 5;
+
+        do
+        {
+          delay(500);
+          Serial.print(".");
+          timeoutAP--;
+        } while (timeoutAP > 0);
+        strcpy(server_ui.dat.SSID, "SSID EINGEBEN");
+        strcpy(server_ui.dat.PSW, "PSW EINGEBEN");
+        break;
+      }
+      else
+      {
+        ESP.restart();
+      }
     }
   }
   Serial.println(" ");
@@ -283,7 +310,7 @@ void setup()
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
   dnsServer.start(DNS_PORT, "*", apIP);
-  server_ui.init_server();
+  server_ui.init_server(anz_relays, pumpe, fuellstand_sensor);
 
   ESPUI.server->on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
     String message;
@@ -375,12 +402,44 @@ void setup()
     pinMode(pumpe_pin, OUTPUT);
     digitalWrite(pumpe_pin, HIGH);
   }
+  fuelle_zwischenspeicher = fuelle_messen();
+  fuelle_zw_ui = !fuelle_zwischenspeicher;
 }
 
 void loop()
 {
   fuelle_zwischenspeicher = fuelle_messen();
   handle_relays();
+  for (int i = 0; i < 4; i++)
+  {
+    if (relay[i] && !relay_zwischenspeicher[i])
+    {
+      ESPUI.print(server_ui.ids[i], "geöffnet");
+      relay_zwischenspeicher[i] = true;
+    }
+    else if (!relay[i] && relay_zwischenspeicher[i])
+    {
+      ESPUI.print(server_ui.ids[i], "geschlossen");
+      relay_zwischenspeicher[i] = false;
+    }
+  }
+  if (fuellstand_sensor)
+  {
+    if (fuelle_zwischenspeicher && !fuelle_zw_ui)
+    {
+      ESPUI.print(server_ui.ids[4], "sensor im nassen");
+      fuelle_zw_ui = true;
+    }
+    else if (!fuelle_zwischenspeicher && fuelle_zw_ui)
+    {
+      ESPUI.print(server_ui.ids[4], "sensor im trocknen");
+      fuelle_zw_ui = false;
+    }
+  }
+
+  pumpe = server_ui.dat.pumpe;
+  fuellstand_sensor = server_ui.dat.fuellstand_sensor;
+  restart = server_ui.dat.restart;
   if (restart)
   {
     int help = 0;
@@ -393,6 +452,8 @@ void loop()
     }
     if (help == anz_relays)
     {
+      server_ui.save();
+      delay(100);
       ESP.restart();
     }
   }
