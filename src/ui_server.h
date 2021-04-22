@@ -9,7 +9,7 @@ struct data_vent_serv
     int pumpe_pin;
     bool fuelle_zwischenspeicher;
     bool restart = false;
-    const char *version = "1.2";
+    char *version = "1.0";
     uint8_t reset;
     char SSID[40];
     char PSW[40];

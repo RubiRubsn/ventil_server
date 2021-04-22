@@ -21,7 +21,7 @@ const int pumpe_pin = D5;
 const uint8_t Relay[anz_relays] = {D0, D1, D2, D4};
 char *SSID = "";
 char *PSW = "";
-const char *version = "1.3";
+const char *version = "2.0";
 //hier die nr. des Ventil servers eintragen um eine einfachere handhabung bei der ip eingabe zu haben
 
 bool fuelle_zwischenspeicher = false;
@@ -266,6 +266,7 @@ void setup()
     fuellstand_sensor = false;
   }
   server_ui.load();
+  strcpy(server_ui.dat.version, version);
   pumpe = server_ui.dat.pumpe;
   fuellstand_sensor = server_ui.dat.fuellstand_sensor;
   WiFi.mode(WIFI_STA);

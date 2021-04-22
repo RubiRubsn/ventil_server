@@ -143,8 +143,8 @@ void server_ui::init_server(const int anz_relays, const bool pumpe, const bool f
     ids[6] = ESPUI.addControl(ControlType::Switcher, "Sensor vorhanden?", String(fuellstand_sensor), ControlColor::Wetasphalt, tab1, &switchCall);
     ids[7] = ESPUI.addControl(ControlType::Text, "SSID", String(dat.SSID), ControlColor::Wetasphalt, tab1, &textCall);
     ids[8] = ESPUI.addControl(ControlType::Text, "Wifi PSW", String(dat.PSW), ControlColor::Wetasphalt, tab1, &textCall);
-    ids[9] = ESPUI.addControl(ControlType::Label, "Version", "test", ControlColor::Wetasphalt, tab1);
+    ids[9] = ESPUI.addControl(ControlType::Label, "Version", String(dat.version), ControlColor::Wetasphalt, tab1);
     ids[10] = ESPUI.addControl(ControlType::Button, "Speichern", "DRÜCKEN", ControlColor::Wetasphalt, tab1, &buttonCall);
 
-    ESPUI.begin("test");
+    ESPUI.begin("feuchte server");
 }
