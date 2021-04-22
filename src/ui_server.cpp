@@ -128,7 +128,7 @@ void server_ui::switchCall(Control *sender, int value)
 void server_ui::init_server(const int anz_relays, const bool pumpe, const bool fuellstand_sensor)
 {
     ESPUI.setVerbosity(Verbosity::VerboseJSON);
-    uint16_t tab1 = ESPUI.addControl(ControlType::Tab, "Sensor", "Sensor");
+    uint16_t tab1 = ESPUI.addControl(ControlType::Tab, "ventil", "ventil");
     for (int i = 0; i < anz_relays; i++)
     {
         char *name = new char[strlen("0") + strlen("zustand Ventil nr: ")];
@@ -146,5 +146,5 @@ void server_ui::init_server(const int anz_relays, const bool pumpe, const bool f
     ids[9] = ESPUI.addControl(ControlType::Label, "Version", String(dat.version), ControlColor::Wetasphalt, tab1);
     ids[10] = ESPUI.addControl(ControlType::Button, "Speichern", "DRÜCKEN", ControlColor::Wetasphalt, tab1, &buttonCall);
 
-    ESPUI.begin("feuchte server");
+    ESPUI.begin("ventil server");
 }
