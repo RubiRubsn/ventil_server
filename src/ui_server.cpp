@@ -6,21 +6,6 @@
 int server_ui::ids[11] = {0};
 data_vent_serv server_ui::dat;
 
-void server_ui::buttonCall(Control *sender, int type)
-{
-    switch (type)
-    {
-    case B_DOWN:
-        dat.reset = 1;
-        dat.restart = true;
-        break;
-
-    case B_UP:
-        Serial.println("Button UP");
-        break;
-    }
-}
-
 void server_ui::save()
 {
     EEPROM.begin(84);
@@ -123,6 +108,22 @@ void server_ui::switchCall(Control *sender, int value)
 
     Serial.print(" ");
     Serial.println(sender->id);
+}
+
+void server_ui::buttonCall(Control *sender, int type)
+{
+    switch (type)
+    {
+    case B_DOWN:
+
+        break;
+
+    case B_UP:
+        dat.reset = 1;
+        dat.restart = true;
+        Serial.println("Button UP");
+        break;
+    }
 }
 
 void server_ui::init_server(const int anz_relays, const bool pumpe, const bool fuellstand_sensor)

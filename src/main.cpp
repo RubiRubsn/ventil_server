@@ -11,7 +11,7 @@
 #include <Updater.h>
 
 const byte DNS_PORT = 53;
-IPAddress apIP(192, 168, 1, 1);
+IPAddress apIP(192, 168, 178, 1);
 DNSServer dnsServer;
 
 const int anz_relays = 4;
@@ -21,7 +21,9 @@ const int pumpe_pin = D5;
 const uint8_t Relay[anz_relays] = {D0, D1, D2, D4};
 char *SSID = "";
 char *PSW = "";
-const char *version = "2.0";
+const char *version = "2.1";
+bool in_ap_mode = false;
+bool restart_delay_one_loop = false;
 //hier die nr. des Ventil servers eintragen um eine einfachere handhabung bei der ip eingabe zu haben
 
 bool fuelle_zwischenspeicher = false;
@@ -280,7 +282,7 @@ void setup()
     timeout++;
     if (timeout >= 20)
     {
-      if (server_ui.dat.reset != 1)
+      if (true)
       {
         Serial.print("\n\nCreating hotspot");
 
@@ -298,6 +300,7 @@ void setup()
         } while (timeoutAP > 0);
         strcpy(server_ui.dat.SSID, "SSID EINGEBEN");
         strcpy(server_ui.dat.PSW, "PSW EINGEBEN");
+        in_ap_mode = true;
         break;
       }
       else
@@ -309,7 +312,7 @@ void setup()
   Serial.println(" ");
 
   Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
+  Serial.println(WiFi.getMode() == WIFI_AP ? WiFi.softAPIP() : WiFi.localIP());
   dnsServer.start(DNS_PORT, "*", apIP);
   server_ui.init_server(anz_relays, pumpe, fuellstand_sensor);
 
@@ -441,6 +444,11 @@ void loop()
   pumpe = server_ui.dat.pumpe;
   fuellstand_sensor = server_ui.dat.fuellstand_sensor;
   restart = server_ui.dat.restart;
+  if (in_ap_mode && millis() > 300000)
+  {
+    Serial.println("restart aufgrund von AP mode");
+    ESP.restart();
+  }
   if (restart)
   {
     int help = 0;
@@ -453,9 +461,19 @@ void loop()
     }
     if (help == anz_relays)
     {
-      server_ui.save();
-      delay(100);
-      ESP.restart();
+      if (restart_delay_one_loop)
+      {
+        ESPUI.jsonReload();
+        delay(100);
+        server_ui.save();
+        delay(100);
+        ESP.restart();
+      }
+      else
+      {
+        restart_delay_one_loop = true;
+        Serial.println("one_loop");
+      }
     }
   }
 }
